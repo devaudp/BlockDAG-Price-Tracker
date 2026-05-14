@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-title" content="BDAG">
+<link rel="apple-touch-icon" href="https://s2.coinmarketcap.com/static/img/coins/128x128/31162.png">
+<title>BDAG Tracker</title>
+</head>
+<body>
+<script>
+(function(){
+  var base = 'https://script.google.com/macros/s/AKfycbxTBe1UrKujcgPcFknaK-hDLbGlCsINfrSrmAWmKnskBnIlx6gNU-ulX7sUZCfQcj7N/exec';
+  var t = new URLSearchParams(window.location.search).get('t') || '';
+  window.location.replace(base + (t ? '?t=' + t : ''));
+})();
+</script>
+</body>
+</html>
