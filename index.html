@@ -5,13 +5,36 @@
 <meta name="apple-mobile-web-app-title" content="BDAG">
 <link rel="apple-touch-icon" href="https://s2.coinmarketcap.com/static/img/coins/128x128/31162.png">
 <title>BDAG Tracker</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,sans-serif;background:#0f0f1a;color:#e8e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px 24px;text-align:center}
+.card{max-width:340px;width:100%}
+img{width:96px;height:96px;border-radius:22px;margin-bottom:24px}
+h1{font-size:28px;font-weight:700;margin-bottom:8px}
+p{color:#9090a8;font-size:16px;line-height:1.5;margin-bottom:32px}
+.step{background:#13132a;border-radius:16px;padding:16px 20px;margin-bottom:12px;font-size:15px;color:#b0b0d0;text-align:left}
+.step strong{color:#e8e8f0}
+.btn{display:block;margin-top:32px;padding:18px;background:#1a3a6a;color:#B5D4F4;border-radius:16px;font-size:18px;font-weight:600;text-decoration:none;border:none;width:100%;cursor:pointer}
+</style>
 </head>
 <body>
+<div class="card">
+  <img src="https://s2.coinmarketcap.com/static/img/coins/128x128/31162.png" alt="BDAG">
+  <h1>BDAG Tracker</h1>
+  <p>Ajoute cette page à ton écran d'accueil pour obtenir l'icône BDAG.</p>
+  <div class="step"><strong>1.</strong> Appuie sur le bouton <strong>Partager</strong> ↑ en bas de Safari</div>
+  <div class="step"><strong>2.</strong> Choisis <strong>« Sur l'écran d'accueil »</strong></div>
+  <div class="step"><strong>3.</strong> Confirme avec <strong>« Ajouter »</strong></div>
+  <button class="btn" id="btn">Ouvrir le dashboard →</button>
+</div>
 <script>
 (function(){
-  var base = 'https://script.google.com/macros/s/AKfycbxTBe1UrKujcgPcFknaK-hDLbGlCsINfrSrmAWmKnskBnIlx6gNU-ulX7sUZCfQcj7N/exec';
-  var t = new URLSearchParams(window.location.search).get('t') || '';
-  window.location.replace(base + (t ? '?t=' + t : ''));
+  var base='https://script.google.com/macros/s/AKfycbxTBe1UrKujcgPcFknaK-hDLbGlCsINfrSrmAWmKnskBnIlx6gNU-ulX7sUZCfQcj7N/exec';
+  var params=new URLSearchParams(window.location.search);
+  var t=params.get('t')||'';
+  var url=base+(t?'?t='+t:'');
+  if(!params.has('add'))window.location.replace(url);
+  document.getElementById('btn').onclick=function(){window.location.href=url;};
 })();
 </script>
 </body>
