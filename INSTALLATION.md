@@ -65,6 +65,16 @@ const BDAG_PRIX_ACHAT_CHF = 0.0005; // Ton prix moyen d'achat par BDAG en CHF (0
 > Exemple : 100 CHF investis pour 200 000 BDAG → `0.0005`
 > Si tu ne veux pas de calcul P&L, laisse `0`.
 
+### Token de sécurité du dashboard (recommandé)
+
+Le dashboard web est public par défaut. Pour le protéger, définis un token secret :
+
+```js
+const DASHBOARD_TOKEN = "monSecretPerso";
+```
+
+Partage ensuite ton dashboard via l'URL `?t=monSecretPerso`. Sans token, le dashboard est librement accessible à quiconque connaît l'URL.
+
 ### Constantes avancées (optionnel)
 
 Ces constantes ont des valeurs par défaut raisonnables. Tu peux les laisser telles quelles.
@@ -72,7 +82,7 @@ Ces constantes ont des valeurs par défaut raisonnables. Tu peux les laisser tel
 ```js
 const HEURES_ENVOI       = [2, 6, 10, 12, 14, 18, 22]; // Heures des pushs horaires
 const RANG_ALERTE_SEUIL  = 5;   // Nb de positions CMC pour déclencher une alerte rang
-const VOLUME_SPIKE_RATIO = 2;   // Multiplicateur vs moyenne 7j pour alerte volume inhabituek
+const VOLUME_SPIKE_RATIO = 2;   // Multiplicateur vs moyenne 7j pour alerte volume inhabituel
 const INTERVALLE_CMC_MIN = 10;  // Minutes minimum entre deux appels CMC
 ```
 

@@ -42,6 +42,50 @@ Envoyée immédiatement dès qu'un palier de prix est franchi. Ne se redéclench
 
 ---
 
+## Dashboard web live
+
+Le script expose un dashboard accessible depuis n'importe quel navigateur ou depuis l'écran d'accueil iOS.
+
+### Accès
+
+L'URL d'accès est :
+```
+https://script.google.com/macros/s/XXXX/exec?t=TON_TOKEN
+```
+Si tu utilises GitHub Pages (recommandé pour l'icône iOS) :
+```
+https://devaudp.github.io/BlockDAG-Price-Tracker/?t=TON_TOKEN
+```
+
+### Ce qu'il affiche (de haut en bas)
+
+| Section | Contenu |
+|---|---|
+| Prix | Prix CHF en grand, variation 24h, rang CMC, badge distance au PAM |
+| Courbe | 48 derniers points (~7 jours), axe prix CHF à gauche, valeur portfolio à droite, ligne PAM |
+| Variations | 1h / 24h / 7j |
+| Portfolio | Valeur totale CHF, quantité BDAG, multiplicateur vs PAM, P&L |
+| Palier cible | Prochain palier + barre de progression logarithmique |
+| ATH | Record absolu et écart vs prix actuel |
+| Données marché | Market Cap, Volume 24h, Circulation, Rang CMC |
+| Pied de page | Heure du dernier refresh + heure du prochain push Pushover |
+
+### Fond dynamique
+Le fond change de couleur selon la performance 24h : léger vert si hausse, léger rouge si baisse.
+
+### Refresh
+Le dashboard se recharge automatiquement toutes les **10 minutes**.
+
+### Ajouter à l'écran d'accueil iOS (icône BDAG)
+
+1. Ouvre l'URL GitHub Pages avec `&add=1` dans Safari :
+   `https://devaudp.github.io/BlockDAG-Price-Tracker/?t=TON_TOKEN&add=1`
+2. La page de setup s'affiche avec les instructions
+3. Partager → Sur l'écran d'accueil → l'icône BDAG apparaît
+4. Les lancements suivants depuis l'icône redirigent directement vers le dashboard
+
+---
+
 ## Menu d'actions (bouton dans chaque push)
 
 Chaque notification contient un bouton **"🎛️ Actions BDAG"** qui ouvre un menu sur ton téléphone avec 4 boutons. Le menu affiche aussi le prix actuel en temps réel dès l'ouverture.
@@ -130,6 +174,7 @@ Si tu mets `0`, les calculs P&L sont simplement omis des messages.
 | `ajouterTarget(prix, label)` | Ajoute un palier |
 | `configurerMesPaliers()` | Recharge tous tes paliers (à éditer puis exécuter) |
 | `debugBilan()` | Affiche l'état interne complet du script dans les logs |
+| `debugIcon()` | Vérifie que le coin ID CMC est bien sauvegardé et affiche l'URL de l'icône |
 | `resetLastSent()` | Force le prochain check horaire à envoyer un push (contourne l'anti-doublon) |
 
 ---
