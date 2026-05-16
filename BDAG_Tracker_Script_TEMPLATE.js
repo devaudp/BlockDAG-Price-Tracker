@@ -1,7 +1,7 @@
 // ============================================================
 // BLOCKDAG PRICE TRACKER — Pushover Notifications
 // ============================================================
-// Avant de déployer, remplis les 5 constantes ci-dessous.
+// Avant de déployer, remplis les constantes ci-dessous.
 // Consulte le fichier INSTALLATION.md pour le guide complet.
 
 const PUSHOVER_BDAG_TOKEN = "TON_API_TOKEN_PUSHOVER";       // pushover.net → ton application → API Token
@@ -56,7 +56,7 @@ function doGet(e) {
     }
     return HtmlService.createHtmlOutput(
       '<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
-      '<body style="background:#0f0f1a;color:#999;font-family:-apple-system,sans-serif;display:flex;' +
+      '<body style="background:#0f0f1a;color:#555;font-family:-apple-system,sans-serif;display:flex;' +
       'align-items:center;justify-content:center;height:100vh;font-size:2rem;margin:0">🔒 Accès restreint</body></html>'
     );
   }
@@ -70,6 +70,7 @@ function doGet(e) {
       const ath     = parseFloat(props.getProperty("bdag_ath")           || "0");
       const histRaw = props.getProperty("bdag_history");
       const history = histRaw ? JSON.parse(histRaw) : [];
+      // Derniers 48 points pour la courbe (environ 48h à fréquence horaire)
       const chartData  = history.slice(-48).map(h => ({ ts: h.ts, p: h.price }));
       const targets    = JSON.parse(props.getProperty("bdag_targets") || "[]");
       const nextTarget = targets.find(t => !t.atteint && t.prix > m.price) || null;
@@ -80,7 +81,9 @@ function doGet(e) {
           market_cap: m.market_cap, volume_24h: m.volume_24h,
           circulating: m.circulating, max_supply: m.max_supply,
           quantite: qte, pam: BDAG_PRIX_ACHAT_CHF,
-          ath: ath, chart: chartData, nextTarget: nextTarget
+          ath: ath, chart: chartData, nextTarget: nextTarget,
+          targets: targets.filter(t => !t.atteint),
+          heures: HEURES_ENVOI
         }))
         .setMimeType(ContentService.MimeType.JSON);
     } catch(err) {
@@ -104,6 +107,23 @@ function doGet(e) {
     }
   }
 
+  // ── Manifest PWA — icône iOS/Android ──────────────────────────────────
+  if (action === "manifest") {
+    const coinId   = PropertiesService.getScriptProperties().getProperty("bdag_coin_id") || "";
+    const iconUrl  = coinId
+      ? "https://s2.coinmarketcap.com/static/img/coins/128x128/" + coinId + ".png"
+      : "https://www.google.com/s2/favicons?domain=blockdag.network&sz=128";
+    const startUrl = baseUrl + (DASHBOARD_TOKEN ? "?t=" + DASHBOARD_TOKEN : "");
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        name: "BDAG Tracker", short_name: "BDAG",
+        start_url: startUrl, display: "standalone",
+        background_color: "#0f0f1a", theme_color: "#1a1a35",
+        icons: [{ src: iconUrl, sizes: "128x128", type: "image/png" }]
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   // ── Actions boutons ────────────────────────────────────────────────────
   if (action) {
     let ok = true, label = "";
@@ -123,10 +143,20 @@ function doGet(e) {
   }
 
   // ── Page HTML — dashboard complet live ────────────────────────────────
+  const cachedCoinId  = PropertiesService.getScriptProperties().getProperty("bdag_coin_id") || "";
+  const touchIconHref = cachedCoinId
+    ? "https://s2.coinmarketcap.com/static/img/coins/128x128/" + cachedCoinId + ".png"
+    : "https://www.google.com/s2/favicons?domain=blockdag.network&sz=128";
   return HtmlService.createHtmlOutput(`<!DOCTYPE html>
 <html>
 <head>
 <meta name="viewport" content="width=980, initial-scale=0.33">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="BDAG">
+<title>BDAG Tracker</title>
+<link rel="apple-touch-icon" sizes="180x180" id="touch-icon" href="${touchIconHref}">
+<link rel="manifest" href="${baseUrl}?action=manifest${token ? '&t=' + token : ''}">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,'SF Pro Display',sans-serif;background:#0f0f1a;color:#e8e8f0;width:980px;padding:50px 40px 80px}
@@ -136,14 +166,14 @@ body{font-family:-apple-system,'SF Pro Display',sans-serif;background:#0f0f1a;co
 .ticker{font-size:38px;font-weight:700;color:#888;letter-spacing:7px;margin-top:16px}
 .price-hero{text-align:center;margin-bottom:36px}
 .price-main{font-size:100px;font-weight:700;letter-spacing:-3px;line-height:1;margin-bottom:20px}
-.hausse{color:#9FE1CB}.baisse{color:#F4A4A4}.neutral{color:#777}
+.hausse{color:#9FE1CB}.baisse{color:#F4A4A4}.neutral{color:#999}
 .price-sub{font-size:50px;display:flex;align-items:center;justify-content:center;gap:28px;flex-wrap:wrap}
-.rank-badge{background:#1a1a35;border:1px solid #30305a;border-radius:40px;padding:10px 28px;font-size:44px;color:#888}
+.rank-badge{background:#1a1a35;border:1px solid #30305a;border-radius:40px;padding:10px 28px;font-size:44px;color:#aaa}
 .chart-wrap{background:#13132a;border-radius:28px;padding:20px 12px 12px;margin-bottom:36px;min-height:160px}
 .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:36px}
 .stat-card{background:#13132a;border-radius:24px;padding:28px}
 .stat-label{font-size:33px;color:#b0b0d0;margin-bottom:10px}
-.stat-value{font-size:48px;font-weight:600;color:#ccc}
+.stat-value{font-size:48px;font-weight:600;color:#ddd}
 .variations{background:#13132a;border-radius:24px;padding:28px;margin-bottom:36px;display:flex;justify-content:space-around}
 .var-item{text-align:center}
 .var-label{font-size:33px;color:#b0b0d0;margin-bottom:8px}
@@ -151,7 +181,7 @@ body{font-family:-apple-system,'SF Pro Display',sans-serif;background:#0f0f1a;co
 .section{background:#13132a;border-radius:24px;padding:28px;margin-bottom:36px}
 .sec-title{font-size:30px;color:#a8a8c8;text-transform:uppercase;letter-spacing:4px;margin-bottom:20px}
 .port-main{font-size:76px;font-weight:700;margin-bottom:10px}
-.port-sub{font-size:40px;color:#777;margin-bottom:8px}
+.port-sub{font-size:40px;color:#999;margin-bottom:8px}
 .pam-line{font-size:40px;color:#9FE1CB;margin-top:6px}
 .target-card{background:#0a1525;border:1px solid #1a3050;border-radius:24px;padding:28px;margin-bottom:36px;font-size:44px;line-height:1.5}
 .ath-card{background:#160f00;border:1px solid #3a2500;border-radius:24px;padding:28px;margin-bottom:40px;font-size:44px;line-height:1.5}
@@ -235,9 +265,19 @@ function drawChart(data,pam,targets,quantite){
   }
   var refs='';
   if(pam>0){
-    var pamY=ry(pam).toFixed(1);
-    refs+='<line x1="'+LM+'" y1="'+pamY+'" x2="'+(LM+CW)+'" y2="'+pamY+'" stroke="#FFD966" stroke-width="2" stroke-dasharray="10,7" opacity="0.6"/>';
-    refs+='<text x="'+(LM+10)+'" y="'+(parseFloat(pamY)-7)+'" font-size="24" fill="#FFD966" opacity="0.85" font-family="-apple-system,sans-serif">PAM</text>';
+    var pamFmt=parseFloat(fp(pam)).toString(); // supprime les zéros inutiles : 0.005100 → 0.0051
+    if(pam>=mn&&pam<=mx){
+      // PAM dans la plage visible — ligne pointillée + label à droite
+      var pamY=ry(pam).toFixed(1);
+      var pamTextY=parseFloat(pamY)<(py+22)?(parseFloat(pamY)+22).toFixed(1):(parseFloat(pamY)-7).toFixed(1);
+      refs+='<line x1="'+LM+'" y1="'+pamY+'" x2="'+(LM+CW)+'" y2="'+pamY+'" stroke="#FFD966" stroke-width="2" stroke-dasharray="10,7" opacity="0.6"/>';
+      refs+='<text x="'+(LM+CW-6)+'" y="'+pamTextY+'" font-size="20" fill="#FFD966" opacity="0.75" text-anchor="end" font-family="-apple-system,sans-serif">PAM '+pamFmt+'</text>';
+    } else {
+      // PAM hors plage — badge discret en haut ou bas à droite avec flèche
+      var arrow=pam>mx?'↑':'↓';
+      var edgeY=pam>mx?(py+18).toFixed(1):(H-py-4).toFixed(1);
+      refs+='<text x="'+(LM+CW-6)+'" y="'+edgeY+'" font-size="20" fill="#FFD966" opacity="0.6" text-anchor="end" font-family="-apple-system,sans-serif">PAM '+pamFmt+' '+arrow+'</text>';
+    }
   }
   if(targets&&targets.length){
     targets.forEach(function(t){
@@ -272,9 +312,18 @@ function drawChart(data,pam,targets,quantite){
 function render(d){
   if(d.id){
     var lg=document.getElementById('logo');
+    var imgUrl='https://s2.coinmarketcap.com/static/img/coins/128x128/'+d.id+'.png';
     lg.src='https://s2.coinmarketcap.com/static/img/coins/64x64/'+d.id+'.png';
     lg.onload=function(){lg.style.display='block';document.getElementById('logo-fb').style.display='none';};
+    document.getElementById('touch-icon').href=imgUrl;
   }
+  // Fond dynamique selon performance 24h
+  var p24=d.pct_24h||0;
+  var intensity=Math.min(Math.abs(p24)/15,1);
+  var bgR=p24>=0?Math.round(15-5*intensity):Math.round(15+18*intensity);
+  var bgG=p24>=0?Math.round(15+18*intensity):Math.round(15-5*intensity);
+  var bgB=Math.round(26-8*intensity);
+  document.body.style.background='rgb('+bgR+','+bgG+','+bgB+')';
   var pc=d.pct_24h>=0?'hausse':'baisse',pa=d.pct_24h>=0?'▲':'▼',ps=d.pct_24h>=0?'+':'';
   var pvNum=(d.price*d.quantite);
   var pvFmt=pvNum.toLocaleString('fr-CH',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -288,13 +337,56 @@ function render(d){
   }
   var tgt='';
   if(d.nextTarget){
-    var rx=(d.nextTarget.prix/d.price).toFixed(2);
-    tgt='<div class="target-card">🎯 Prochain palier&nbsp; <strong>'+d.nextTarget.label+'</strong>&nbsp; @ '+fp(d.nextTarget.prix)+' CHF <span style="color:#a0b0c8">&nbsp;·&nbsp; ×'+rx+' à faire</span></div>';
+    var rx=(d.nextTarget.prix/d.price).toFixed(1);
+    // Barre de progression logarithmique depuis le min historique vers le palier
+    var barPct=0;
+    if(d.chart&&d.chart.length>1){
+      var prices=d.chart.map(function(h){return h.p;});
+      var logMin=Math.log(Math.min.apply(null,prices));
+      var logTarget=Math.log(d.nextTarget.prix);
+      var logNow=Math.log(d.price);
+      barPct=Math.min(Math.max((logNow-logMin)/(logTarget-logMin)*100,0),100).toFixed(1);
+    }
+    var barColor=p24>=0?'linear-gradient(90deg,#1a6a4a,#9FE1CB)':'linear-gradient(90deg,#6a1a1a,#F4A4A4)';
+    tgt='<div class="target-card">'+
+      '🎯 Prochain palier&nbsp; <strong>'+d.nextTarget.label+'</strong>&nbsp; @ '+fp(d.nextTarget.prix)+' CHF'+
+      '<span style="color:#a0b0c8">&nbsp;·&nbsp; ×'+rx+' à faire</span>'+
+      '<div style="background:#0d1830;border-radius:12px;height:12px;overflow:hidden;margin-top:22px">'+
+        '<div style="background:'+barColor+';height:100%;width:'+barPct+'%;border-radius:12px;transition:width 1s ease"></div>'+
+      '</div>'+
+      '<div style="display:flex;justify-content:space-between;margin-top:10px;font-size:28px;color:#506080">'+
+        '<span>📍 maintenant</span><span>'+barPct+'%</span><span>🎯 '+d.nextTarget.label+'</span>'+
+      '</div>'+
+    '</div>';
   }
   var athHtml='';
   if(d.ath>0){
     var athInfo=d.price>=d.ath?'<span style="color:#FFD966">🏆 Record actuel</span>':'<span style="color:#999">▼ '+(((d.price-d.ath)/d.ath)*100).toFixed(1)+'% vs ATH</span>';
     athHtml='<div class="ath-card">🏅 ATH&nbsp; <strong>'+fp(d.ath)+'</strong> CHF &nbsp;&nbsp;'+athInfo+'</div>';
+  }
+  // Distance au PAM
+  var pamDistBadge='';
+  if(d.pam>0&&d.price>0){
+    var pamRatio=d.price/d.pam;
+    if(pamRatio<1){
+      var toReach=(d.pam/d.price).toFixed(1);
+      pamDistBadge='<span style="background:rgba(255,180,0,0.12);color:#FFD966;border-radius:24px;padding:6px 20px;font-size:30px;font-weight:600">×'+toReach+' pour PAM ↑</span>';
+    } else {
+      pamDistBadge='<span style="background:rgba(100,220,160,0.12);color:#9FE1CB;border-radius:24px;padding:6px 20px;font-size:30px;font-weight:600">×'+pamRatio.toFixed(2)+' au-dessus PAM ✓</span>';
+    }
+  }
+  // Prochain push
+  var nextPushStr='';
+  if(d.heures&&d.heures.length){
+    var now2=new Date();
+    var h2=now2.getHours(),m2=now2.getMinutes();
+    var nextH=null;
+    for(var i=0;i<d.heures.length;i++){if(d.heures[i]>h2){nextH=d.heures[i];break;}}
+    if(nextH===null)nextH=d.heures[0];
+    var diffMin=nextH>h2?(nextH-h2)*60-m2:(24-h2+nextH)*60-m2;
+    var dh=Math.floor(diffMin/60),dm=diffMin%60;
+    var diffStr=dh>0?dh+'h'+String(dm).padStart(2,'0'):dm+'min';
+    nextPushStr=' &nbsp;·&nbsp; 🔔 '+String(nextH).padStart(2,'0')+':00 ('+diffStr+')';
   }
   var now=new Date();
   var ts=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
@@ -304,15 +396,10 @@ function render(d){
       '<div class="price-sub">'+
         '<span class="'+pc+'">'+pa+' '+ps+(d.pct_24h||0).toFixed(2)+'% (24h)</span>'+
         '<span class="rank-badge">#'+d.rank+' CMC</span>'+
+        (pamDistBadge?pamDistBadge:'')+
       '</div>'+
     '</div>'+
     '<div class="chart-wrap"><div id="chart-area"></div><div id="chart-meta" style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:0 4px"></div></div>'+
-    '<div class="stats-grid">'+
-      '<div class="stat-card"><div class="stat-label">🏦 Market Cap</div><div class="stat-value">'+fm(d.market_cap)+' CHF</div></div>'+
-      '<div class="stat-card"><div class="stat-label">📦 Volume 24h</div><div class="stat-value">'+fm(d.volume_24h)+' CHF</div></div>'+
-      '<div class="stat-card"><div class="stat-label">🔄 Circulation</div><div class="stat-value">'+fm(d.circulating)+' BDAG</div></div>'+
-      '<div class="stat-card"><div class="stat-label">🏆 Rang CMC</div><div class="stat-value">#'+d.rank+'</div></div>'+
-    '</div>'+
     '<div class="variations">'+
       '<div class="var-item"><div class="var-label">1h</div><div class="var-val">'+fc(d.pct_1h)+'</div></div>'+
       '<div class="var-item"><div class="var-label">24h</div><div class="var-val">'+fc(d.pct_24h)+'</div></div>'+
@@ -325,33 +412,14 @@ function render(d){
       pamHtml+
     '</div>'+
     tgt+athHtml+
-    '<div class="upd">↻ '+ts+'</div>';
+    '<div class="stats-grid">'+
+      '<div class="stat-card"><div class="stat-label">🏦 Market Cap</div><div class="stat-value">'+fm(d.market_cap)+' CHF</div></div>'+
+      '<div class="stat-card"><div class="stat-label">📦 Volume 24h</div><div class="stat-value">'+fm(d.volume_24h)+' CHF</div></div>'+
+      '<div class="stat-card"><div class="stat-label">🔄 Circulation</div><div class="stat-value">'+fm(d.circulating)+' BDAG</div></div>'+
+      '<div class="stat-card"><div class="stat-label">🏆 Rang CMC</div><div class="stat-value">#'+d.rank+'</div></div>'+
+    '</div>'+
+    '<div class="upd">↻ '+ts+nextPushStr+'</div>';
   setTimeout(function(){drawChart(d.chart,d.pam,d.targets||[],d.quantite||0);},50);
-}
-function generateIcon(){
-  try{
-    var c=document.createElement('canvas');c.width=180;c.height=180;
-    var ctx=c.getContext('2d');
-    // Fond dégradé avec coin arrondi (compatible iOS sans roundRect)
-    var g=ctx.createLinearGradient(0,0,0,180);
-    g.addColorStop(0,'#1a1a3e');g.addColorStop(1,'#0d0d22');
-    ctx.fillStyle=g;
-    var rad=36;
-    ctx.beginPath();
-    ctx.moveTo(rad,0);
-    ctx.lineTo(180-rad,0);ctx.quadraticCurveTo(180,0,180,rad);
-    ctx.lineTo(180,180-rad);ctx.quadraticCurveTo(180,180,180-rad,180);
-    ctx.lineTo(rad,180);ctx.quadraticCurveTo(0,180,0,180-rad);
-    ctx.lineTo(0,rad);ctx.quadraticCurveTo(0,0,rad,0);
-    ctx.closePath();ctx.fill();
-    // Symbole ₿ dégradé violet
-    ctx.font='bold 100px -apple-system,sans-serif';
-    ctx.textAlign='center';ctx.textBaseline='middle';
-    var tg=ctx.createLinearGradient(90,50,90,140);
-    tg.addColorStop(0,'#a78bfa');tg.addColorStop(1,'#7c3aed');
-    ctx.fillStyle=tg;ctx.fillText('₿',90,98);
-    document.getElementById('touch-icon').href=c.toDataURL('image/png');
-  }catch(e){}
 }
 function loadDash(){
   var xhr=new XMLHttpRequest();
@@ -364,7 +432,6 @@ function loadDash(){
   xhr.send();
 }
 window.onload=function(){
-  generateIcon();
   loadDash();
   setInterval(loadDash,600000);
 };
@@ -385,7 +452,7 @@ function run(a){
 }
 </script>
 </body>
-</html>`);
+</html>`).setTitle("BDAG Tracker");
 }
 
 // ------------------------------------------------------------
@@ -465,6 +532,7 @@ function getBDAGmarketData() {
   const data  = JSON.parse(response.getContentText());
   const coin  = data.data.BDAG;
   const quote = coin.quote.CHF;
+  PropertiesService.getScriptProperties().setProperty("bdag_coin_id", coin.id.toString());
   return {
     price:       quote.price,
     volume_24h:  quote.volume_24h,
@@ -492,7 +560,6 @@ function sendPushoverBDAG(title, message, showButton, priority) {
     };
 
     // Priority : incluse uniquement si non-défaut — Pushover utilise 0 par défaut
-    // Forcé en string explicite — GAS peut mal sérialiser les entiers en form-data
     const prio = priority !== undefined ? Math.round(Number(priority)) : 0;
     if (prio !== 0) payload.priority = String(prio);
 
@@ -714,7 +781,6 @@ function checkBDAGbilan() {
   const historyRaw = props.getProperty("bdag_history");
   const history    = historyRaw ? JSON.parse(historyRaw) : [];
 
-  // Un seul appel CMC pour le prix + les données marché
   const market     = getBDAGmarketData();
   const prixActuel = market.price;
 
@@ -884,17 +950,16 @@ function pushBDAGmarketStats() {
 
 // ------------------------------------------------------------
 // Alerte changement de rang CMC (seuil : ±RANG_ALERTE_SEUIL positions)
-// Appelé automatiquement à chaque checkBDAGprice
 // ------------------------------------------------------------
 function checkRangCMC(rangActuel) {
   const props   = PropertiesService.getScriptProperties();
   const lastRaw = props.getProperty("bdag_rang_last");
   props.setProperty("bdag_rang_last", rangActuel.toString());
 
-  if (!lastRaw) return; // Première exécution — pas de comparaison possible
+  if (!lastRaw) return;
 
   const lastRang = parseInt(lastRaw);
-  const delta    = lastRang - rangActuel; // Positif = amélioration (numéro plus bas = meilleur)
+  const delta    = lastRang - rangActuel;
 
   if (Math.abs(delta) < RANG_ALERTE_SEUIL) return;
 
@@ -946,7 +1011,6 @@ function listerTargets() {
 
 // ------------------------------------------------------------
 // Vérifie les paliers cibles — appelé à chaque checkBDAGprice
-// Envoie un push dès qu'un palier est franchi (une seule fois)
 // ------------------------------------------------------------
 function checkTargetsPrix(prixActuel, quantite) {
   const props   = PropertiesService.getScriptProperties();
@@ -986,7 +1050,7 @@ function checkTargetsPrix(prixActuel, quantite) {
     ].filter(l => l !== null);
 
     const titre = `🎯 Palier ${t.label} atteint ! BDAG > ${formatPrice(t.prix)} CHF`;
-    sendPushoverBDAG(titre, lines.join("\n"), true, 1); // Priorité haute
+    sendPushoverBDAG(titre, lines.join("\n"), true, 1);
     Logger.log(`Target atteint : ${t.label} @ ${formatPrice(t.prix)} CHF`);
   });
 
@@ -995,7 +1059,6 @@ function checkTargetsPrix(prixActuel, quantite) {
 
 // ------------------------------------------------------------
 // Calcul d'un scénario de vente partielle
-// Retourne chfRecu, restantBDAG, pnlTag (chaîne P&L ou "")
 // ------------------------------------------------------------
 function simulCalc(prix, quantite, pct) {
   const qteVendue = quantite * pct / 100;
@@ -1012,7 +1075,6 @@ function simulCalc(prix, quantite, pct) {
 
 // ------------------------------------------------------------
 // Push simulateur de vente — 4 scénarios au prix actuel
-// Accessible depuis le menu Pushover
 // ------------------------------------------------------------
 function pushSimulateurVente() {
   try {
@@ -1092,21 +1154,18 @@ function checkVolumeSpike(volumeActuel) {
   const props = PropertiesService.getScriptProperties();
   const now   = Date.now();
 
-  // Historique des volumes — on garde 7 jours
   const raw  = props.getProperty("bdag_volume_history");
   const vols = raw ? JSON.parse(raw) : [];
   vols.push({ ts: now, vol: volumeActuel });
   const filtres = vols.filter(v => v.ts >= now - 7 * 24 * 60 * 60 * 1000);
   props.setProperty("bdag_volume_history", JSON.stringify(filtres));
 
-  if (filtres.length < 4) return; // Pas assez de données
+  if (filtres.length < 4) return;
 
-  // Anti-spam : une seule alerte par jour
   const spikeDayKey = "bdag_volume_spike_day";
   const today = new Date().toDateString();
   if (props.getProperty(spikeDayKey) === today) return;
 
-  // Moyenne sur les valeurs précédentes (sans la valeur actuelle)
   const precedents = filtres.slice(0, -1);
   const moyenne    = precedents.reduce((s, v) => s + v.vol, 0) / precedents.length;
 
@@ -1168,6 +1227,18 @@ function debugBilan() {
   Logger.log("══════════════════════════════════");
 }
 
+function debugIcon() {
+  const props  = PropertiesService.getScriptProperties();
+  const coinId = props.getProperty("bdag_coin_id");
+  if (!coinId) {
+    Logger.log("⚠️ bdag_coin_id non défini — exécute testBDAGpush() pour le peupler");
+    return;
+  }
+  Logger.log("bdag_coin_id : " + coinId);
+  Logger.log("URL icône 64px  : https://s2.coinmarketcap.com/static/img/coins/64x64/"  + coinId + ".png");
+  Logger.log("URL icône 128px : https://s2.coinmarketcap.com/static/img/coins/128x128/" + coinId + ".png");
+}
+
 function testBDAGpush() {
   let BDAG_QUANTITE = 0;
   try {
@@ -1197,23 +1268,18 @@ function testSimulateurVente() {
   pushSimulateurVente();
 }
 
-// Simule un changement de rang pour tester l'alerte
-// Exemple : forcer le rang sauvegardé à 320 puis appeler avec 310
 function testRangCMC() {
   PropertiesService.getScriptProperties().setProperty("bdag_rang_last", "320");
   checkRangCMC(310);
 }
 
-// Simule un nouveau ATH pour tester l'alerte
 function testATH() {
   PropertiesService.getScriptProperties().setProperty("bdag_ath", "0.000001");
   checkATH(getBDAGpriceCHF_push());
 }
 
-// Simule un spike de volume pour tester l'alerte
 function testVolumeSpike() {
   const props = PropertiesService.getScriptProperties();
-  // Injecte un historique de volumes faibles pour que le volume actuel paraisse énorme
   const fakeHistory = [1,2,3,4,5].map((i, idx) => ({
     ts:  Date.now() - (idx + 1) * 24 * 60 * 60 * 1000,
     vol: 1000
